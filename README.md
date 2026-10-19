@@ -13,15 +13,27 @@ Brings **Area Tilling**, **Smart Water Bucket Irrigation (2-Pass Hybrid Grid)**,
 
 ---
 
-## 🎮 Controls & Keybindings
+## 🎮 Controls & Activation Keys
 
-All keybindings can be customized in the standard Minecraft **Options -> Controls -> Key Binds -> Vein Farming** menu:
+Vein Farming adapts dynamically to your mod setup:
 
+### 🔑 Activation Priority
+1. **With [FTB Ultimine](https://modrinth.com/mod/ftb-ultimine) installed:**
+   - Mass actions trigger strictly via **FTB Ultimine's activation key** (default: `~` / `Grave Accent` or whatever key you configured in FTB Ultimine).
+   - Uses FTB Ultimine's selected shape and block limits.
+2. **With [LiteMiner](https://modrinth.com/mod/liteminer) installed:**
+   - Mass actions trigger strictly via **LiteMiner's activation key** (default: `~` / `Grave Accent` or whatever key you configured in LiteMiner).
+   - Uses LiteMiner's selected pattern and shape limits.
+3. **Standalone Mode (neither FTB Ultimine nor LiteMiner installed):**
+   - Mass actions trigger by default simply by holding **Sneak (`Shift`)**!
+   - You can also customize a dedicated trigger key in **Options -> Controls -> Key Binds -> Vein Farming** (`Farming Veinmine / Mass Action`).
 
-| Keybind                            | Default Key      | Description                                                                                                                                                                                                                                  |
-| :----------------------------------- | :----------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Farming Veinmine / Mass Action** | `Left Shift`     | Hold to activate mass farming actions (tilling, irrigation, planting, harvesting, bone meal, destroying). When LiteMiner or FTB Ultimine is installed, their activation keys also trigger mass actions.                                      |
-| **Toggle Smart Planting**          | *Unbound* (None) | Instantly toggle between **Smart Planting** (spatial algorithms active) and **Uniform Carpet Planting** (plants all viable soils without spacing/layout filters). Displays an action bar message and immediately updates the client preview! |
+### ⌨️ Keybindings
+
+| Keybind | Default Key | Applicable Setup | Description |
+| :--- | :--- | :--- | :--- |
+| **Farming Veinmine / Mass Action** | `Left Shift` | **Standalone Only** | Trigger key for mass actions when neither LiteMiner nor FTB Ultimine is present. *(Holding vanilla `Sneak/Shift` also works).* |
+| **Toggle Smart Planting** | *Unbound* (None) | **All Modes** | Instantly toggle between **Smart Planting** (spatial algorithms active) and **Uniform Carpet Planting** (plants all viable soils without spacing/layout filters). Displays an action bar message and immediately updates the client preview! |
 
 ---
 
@@ -29,7 +41,7 @@ All keybindings can be customized in the standard Minecraft **Options -> Control
 
 ### 🚜 1. Mass Tilling (Area Hoe)
 
-* Hold any **Hoe** and press your **Vein Farming activation key** (or hold `Sneak/Shift`).
+* Hold any **Hoe** and hold your active miner key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode).
 * **Right-click** on any tillable soil (`Grass Block`, `Dirt`, `Coarse Dirt`, `Rooted Dirt`, etc.).
 * All blocks in your active shape (`3x3`, `Shapeless`, `Tunnel`...) are converted into **Farmland**!
 * **Safe Foliage Clearing:** Automatically clears wild grass, ferns, and flowers above the soil without ever harming pre-existing crops.
@@ -41,7 +53,7 @@ All keybindings can be customized in the standard Minecraft **Options -> Control
 
 Tired of manually digging water holes and placing buckets to hydrate massive farms? Vein Farming introduces an automated, mathematically optimal water irrigation system:
 
-* **How to Trigger:** Hold any **Hoe in Main Hand** and a **Water Bucket** (or any fluid container filled with water) in **Off Hand**. Hold the activation key and **Right-click** tillable soil.
+* **How to Trigger:** Hold any **Hoe in Main Hand** and a **Water Bucket** (or any fluid container filled with water) in **Off Hand**. Hold your active miner key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode) and **Right-click** tillable soil.
 * **2-Pass Hybrid Optimization Grid:**
   1. **Pass 1 (Strict 8-Block Spacing Grid):** Places water source blocks strictly spaced $\ge 8$ blocks apart (Chebyshev distance). Automatically anchors to existing world water sources or centers over the field to ensure zero overlapping hydration zones and maximize plantable farmland surface.
   2. **Pass 2 (Full Coverage Rescue):** If irregular farm borders, narrow peninsulas, or tight pockets would otherwise leave dead unwatered zones, Pass 2 automatically places centered rescue water holes to **guarantee 100% of your farmland is hydrated** without dead dry dirt!
@@ -92,18 +104,19 @@ Right-click on Farmland, Sand, Soul Sand, End Stone, or Jungle Logs to carpet-pl
 
 ### 🦴 4. AOE Bone Meal (Smart Fertilizing & Flower Propagation)
 
-* Hold **Bone Meal** and **Right-click** on crops or flowers.
+* Hold **Bone Meal** and **Right-click** on crops or flowers while holding your activation key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode).
 * **Smart Area Growth:** Even if the clicked crop is already mature, Bone Meal will automatically bypass it and continue fertilizing all other growing crops in the area until they reach 100% maturity!
 * **🌸 Bedrock-Style Flower Propagation (`bedrock_flower_bonemeal`):**
   - Right-click small flowers (**Poppy, Dandelion, Tulips, Cornflower, Orchids, Allium, etc.**) with Bone Meal to propagate clones onto surrounding grass/dirt blocks, exactly like Minecraft Bedrock Edition!
   - **Single-Click Mode:** Spreads 1–4 duplicate blooms and companion short grass within a 7x7 meadow area.
-  - **Vein Mass Mode (`Shift` / Trigger Key):** Cascades bone meal across entire connected wildflower patches with ascending audio pitches, instantly creating lush, vibrant flowering fields!
+  - **Vein Mass Mode:** Cascades bone meal across entire connected wildflower patches when holding your activation key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode), with ascending audio pitches, instantly creating lush, vibrant flowering fields!
 * In **Creative Mode**, bone meal is never consumed. In Survival, it draws safely from your hand and inventory.
 
 ---
 
-* 🌾 5. Universal Mass Harvesting & Auto-Replanting
-* **Right-click** on crops or farmland with an empty hand or tool.
+### 🌾 5. Universal Mass Harvesting & Auto-Replanting
+
+* **Right-click** on crops or farmland with an empty hand or tool while holding your activation key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode).
 * **Auto-Replant:** Automatically harvests mature crops and replants them at age 0 using dropped or inventory seeds!
 * **Immature Crop Safety:** Immature crops are strictly preserved.
 * **Root-Preserving Column Crops (Sugar Cane, Bamboo, Cactus, Kelp):** Automatically identifies the bottom root/anchor block and **strictly preserves the root**, only harvesting the stalks above it!
@@ -119,7 +132,7 @@ Right-click on Farmland, Sand, Soul Sand, End Stone, or Jungle Logs to carpet-pl
 
 ### 🪓 6. Mass Destruction Mode (Left-Click Farm Clearing)
 
-* Hold **Sneak (`Shift`)** (or your miner mod key) and **Left-click (Mine)** a crop while holding any tool (**Axe, Pickaxe, Shovel, Hoe, Knife, Shears**).
+* Hold your active miner key (FTB Ultimine / LiteMiner, or `Sneak/Shift` in Standalone mode) and **Left-click (Mine)** a crop while holding any tool (**Axe, Pickaxe, Shovel, Hoe, Knife, Shears**).
 * Completely clears all connected agricultural crops, stems, and column roots **without replanting**, allowing you to completely wipe farm plots in seconds!
 * **Clean Drop Aggregation:**
   - If `harvest_to_inventory` is enabled, all drops from the broken vein are deposited directly into your inventory.
@@ -143,7 +156,7 @@ Right-click on Farmland, Sand, Soul Sand, End Stone, or Jungle Logs to carpet-pl
 
 ### 👁️ 9. Standalone Real-Time 3D Wireframe Preview
 
-When LiteMiner is not installed, the mod renders its own client-side **wireframe bounding box highlight** on target blocks when holding Sneak or the activation key:
+In Standalone Mode (neither LiteMiner nor FTB Ultimine installed), the mod renders its own client-side **real-time 3D wireframe bounding box highlight** on target blocks when holding Sneak (`Shift`) or the configured trigger key:
 
 * 🌾 **Golden Amber:** Mass Harvesting
 * 🌿 **Sprout Green:** Mass Planting
