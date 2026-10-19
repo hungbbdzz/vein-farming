@@ -13,9 +13,11 @@ bin/
 .classpath
 .project
 
-# Minecraft / NeoForge run directories
+# Minecraft / NeoForge / Fabric run directories
 run/
+logs/
 *.log
+*.log.gz
 crash-reports/
 
 # OS specific files

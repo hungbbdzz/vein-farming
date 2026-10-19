@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "vein_farming",
+  "version": "${version}",
+  "name": "Vein Farming: Universal Farming QoL Toolkit",
+  "description": "Universal AOE farming mod with Area Tilling, Smart Water Bucket Irrigation, Smart Mass Planting, and AOE Bone Meal fertilizing.",
+  "authors": [
+    "hungbbdzz"
+  ],
+  "contact": {
+    "homepage": "https://github.com/hungbbdzz/vein-farming",
+    "sources": "https://github.com/hungbbdzz/vein-farming"
+  },
+  "license": "MIT",
+  "icon": "logo.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.velorise.veinfarming.VeinFarmingMod"
+    ],
+    "client": [
+      "com.velorise.veinfarming.client.VeinFarmingClientMod"
+    ],
+    "modmenu": [
+      "com.velorise.veinfarming.client.ModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "vein_farming.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.17.3",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
