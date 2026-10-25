@@ -73,6 +73,9 @@ public class TillingAndFertilizingManager {
             List<BlockPos> waterHoles = PlantingAlgorithms.calculateOptimalWaterHoles(level, sorted, clickedPos, availableWater);
             if (!waterHoles.isEmpty()) {
                 for (BlockPos holePos : waterHoles) {
+                    if (!level.mayInteract(player, holePos)) {
+                        continue;
+                    }
                     if (consumeOneWaterSource(player)) {
                         // Clear foliage above if any
                         BlockPos aboveHole = holePos.above();
@@ -109,6 +112,9 @@ public class TillingAndFertilizingManager {
         for (BlockPos pos : sorted) {
             if (tilledCount >= maxLimit) {
                 break;
+            }
+            if (!level.mayInteract(player, pos)) {
+                continue;
             }
 
             // Safety check: tool broken or almost broken
@@ -256,6 +262,9 @@ public class TillingAndFertilizingManager {
                 if (!player.isCreative() && player.getItemInHand(hand).isEmpty()) {
                     break;
                 }
+                if (!level.mayInteract(player, pos)) {
+                    continue;
+                }
 
                 BlockPos cropPos = pos;
                 BlockState state = level.getBlockState(cropPos);
@@ -399,7 +408,7 @@ public class TillingAndFertilizingManager {
         int radius = FarmingConfig.FARMING_RADIUS.get();
         Queue<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
-        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> result = new LinkedHashSet<>();
 
         if (!isTillable(level, player, hand, clickedPos)) {
             return Collections.emptyList();
@@ -518,14 +527,10 @@ public class TillingAndFertilizingManager {
             boolean isSameCropType = targetCropBlock == null || candidateState.is(targetCropBlock);
             if (isSameCropType && PlantClassifier.isBonemealCrop(candidateState)) {
                 if (PlantClassifier.isSmallFlower(candidateState)) {
-                    if (!result.contains(candidateCrop)) {
-                        result.add(candidateCrop);
-                    }
+                    result.add(candidateCrop);
                 } else if (candidateState.getBlock() instanceof BonemealableBlock bonemealable) {
                     if (bonemealable.isValidBonemealTarget(level, candidateCrop, candidateState)) {
-                        if (!result.contains(candidateCrop)) {
-                            result.add(candidateCrop);
-                        }
+                        result.add(candidateCrop);
                     }
                 }
             }
@@ -798,4 +803,3 @@ public class TillingAndFertilizingManager {
         }
     }
 }
-

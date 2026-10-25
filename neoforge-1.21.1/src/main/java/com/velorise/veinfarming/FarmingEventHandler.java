@@ -224,8 +224,9 @@ public class FarmingEventHandler {
                         || FarmingManager.isFruitCrop(level.getBlockState(clickedPos.above()))
                         || FarmingManager.isChorus(level.getBlockState(clickedPos.above()));
 
-                // If player clicks empty soil while holding seeds, prioritize mass planting over harvesting
-                boolean plantingOnEmptySoil = isSoil && level.getBlockState(clickedPos.above()).isAir() && FarmingManager.isPlantableSeed(heldItem);
+                // If player clicks empty soil (or soil with replaceable foliage) while holding seeds, prioritize mass planting over harvesting
+                BlockState aboveSoilState = level.getBlockState(clickedPos.above());
+                boolean plantingOnEmptySoil = isSoil && (aboveSoilState.isAir() || aboveSoilState.canBeReplaced()) && FarmingManager.isPlantableSeed(heldItem);
 
                 if (!plantingOnEmptySoil && (isDirectCrop || isSoil || isAboveCrop)) {
                     BlockPos targetCrop = isDirectCrop ? clickedPos : clickedPos.above();
@@ -324,7 +325,11 @@ public class FarmingEventHandler {
                     || FarmingManager.isSmallFlower(clickedState);
         }
         if (FarmingManager.isPlantableSeed(heldItem)) {
-            if (FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos)
+            if (PlantClassifier.isCocoaBean(heldItem)) {
+                if (PlantClassifier.isJungleLog(clickedState) || clickedState.getBlock() instanceof net.minecraft.world.level.block.CocoaBlock) {
+                    return true;
+                }
+            } else if (FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos)
                     || FarmingManager.isValidSoilForSeed(heldItem, level.getBlockState(clickedPos.below()), level, clickedPos.below())) {
                 return true;
             }
@@ -383,6 +388,10 @@ public class FarmingEventHandler {
         if (LiteMinerCompat.isLiteMinerLoaded()) {
             if (player instanceof ServerPlayer sp) {
                 if (LiteMinerCompat.isLiteMinerActive(sp)) {
+                    return true;
+                }
+            } else {
+                if (LiteMinerCompat.isLiteMinerClientActive()) {
                     return true;
                 }
             }

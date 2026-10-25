@@ -923,8 +923,9 @@ public class PlantingAlgorithms {
             minSpacing = 8;
         }
 
-        // 1. Scan for existing water sources in the world nearby (within 12 blocks)
-        List<BlockPos> existingWorldWaters = findNearbyWorldWater(level, tilledPositions, 12);
+        // 1. Scan for existing water sources in the world nearby (within minSpacing blocks)
+        List<BlockPos> existingWorldWaters = findNearbyWorldWater(level, tilledPositions, Math.max(8, minSpacing));
+        Set<BlockPos> existingWorldWaterSet = new HashSet<>(existingWorldWaters);
 
         // 2. Identify which positions are NOT yet hydrated by existing world water
         Set<BlockPos> unhydrated = new HashSet<>();
@@ -1013,7 +1014,7 @@ public class PlantingAlgorithms {
         }));
 
         // 6. Map ideal grid points to best available candidate positions in tilledPositions
-        List<BlockPos> candidatePositions = new ArrayList<>();
+        Set<BlockPos> candidateSet = new LinkedHashSet<>();
         for (int[] gp : idealGridPoints) {
             int targetX = gp[0];
             int targetZ = gp[1];
@@ -1040,28 +1041,30 @@ public class PlantingAlgorithms {
                 }
             }
 
-            if (bestCand != null && !candidatePositions.contains(bestCand)) {
-                candidatePositions.add(bestCand);
+            if (bestCand != null) {
+                candidateSet.add(bestCand);
             }
         }
 
         // Fallback candidates for irregular shapes
         List<BlockPos> fallbackCandidates = new ArrayList<>();
         for (BlockPos pos : tilledPositions) {
-            if (!candidatePositions.contains(pos) && level.getBlockState(pos.below()).isSolid()) {
+            if (!candidateSet.contains(pos) && level.getBlockState(pos.below()).isSolid()) {
                 if (!isTooCloseToWater(pos, existingWorldWaters, minSpacing)) {
                     fallbackCandidates.add(pos);
                 }
             }
         }
         fallbackCandidates.sort(Comparator.comparingInt(pos -> pos.distManhattan(clickedPos)));
-        candidatePositions.addAll(fallbackCandidates);
+        candidateSet.addAll(fallbackCandidates);
+        List<BlockPos> candidatePositions = new ArrayList<>(candidateSet);
 
         // 7. Greedy Selection - Pass 1: Strict Minimum Spacing Grid (Highest Priority)
         // Strictly enforces minSpacing (default 8 blocks) against all existing world water
         // and newly selected water holes. Preserves maximum farmland surface without redundant overlap.
         Set<BlockPos> covered = new HashSet<>();
         List<BlockPos> selectedHoles = new ArrayList<>();
+        Set<BlockPos> selectedHoleSet = new HashSet<>();
 
         while (selectedHoles.size() < maxWaterHoles && covered.size() < unhydrated.size()) {
             BlockPos bestChoice = null;
@@ -1069,7 +1072,7 @@ public class PlantingAlgorithms {
             double bestDistToGrid = Double.MAX_VALUE;
 
             for (BlockPos cand : candidatePositions) {
-                if (selectedHoles.contains(cand)) {
+                if (selectedHoleSet.contains(cand)) {
                     continue;
                 }
 
@@ -1116,6 +1119,7 @@ public class PlantingAlgorithms {
             }
 
             selectedHoles.add(bestChoice);
+            selectedHoleSet.add(bestChoice);
             for (BlockPos u : unhydrated) {
                 int dx = Math.abs(u.getX() - bestChoice.getX());
                 int dz = Math.abs(u.getZ() - bestChoice.getZ());
@@ -1137,7 +1141,7 @@ public class PlantingAlgorithms {
             double bestDistToCenter = Double.MAX_VALUE;
 
             for (BlockPos cand : tilledPositions) {
-                if (selectedHoles.contains(cand) || existingWorldWaters.contains(cand)) {
+                if (selectedHoleSet.contains(cand) || existingWorldWaterSet.contains(cand)) {
                     continue;
                 }
                 if (!level.getBlockState(cand.below()).isSolid()) {
@@ -1213,6 +1217,7 @@ public class PlantingAlgorithms {
             }
 
             selectedHoles.add(bestRescue);
+            selectedHoleSet.add(bestRescue);
             for (BlockPos u : unhydrated) {
                 int dx = Math.abs(u.getX() - bestRescue.getX());
                 int dz = Math.abs(u.getZ() - bestRescue.getZ());
@@ -1226,4 +1231,3 @@ public class PlantingAlgorithms {
         return selectedHoles;
     }
 }
-

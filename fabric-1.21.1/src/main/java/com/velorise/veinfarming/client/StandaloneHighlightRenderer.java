@@ -452,6 +452,7 @@ public class StandaloneHighlightRenderer {
 
         float lineAlpha = ((isPlanting && ghostPlantState != null) || (isHoe && FarmingConfig.GHOST_FARMLAND_PREVIEW.get())) ? 0.35f : a;
         boolean isCocoaPlanting = isPlanting && FarmingManager.isCocoaBean(heldItem);
+        Set<BlockPos> waterHoleSet = plannedWaterHoles.isEmpty() ? Collections.emptySet() : new HashSet<>(plannedWaterHoles);
         for (BlockPos pos : previewBlocks) {
             BlockPos renderPos = (isPlanting && !isCocoaPlanting) ? pos.above() : pos;
             net.minecraft.world.phys.AABB aabb;
@@ -469,7 +470,7 @@ public class StandaloneHighlightRenderer {
             float boxR = r, boxG = g, boxB = b;
             float currentAlpha = lineAlpha;
             if (isHoe && FarmingConfig.SMART_IRRIGATION_PREVIEW.get()) {
-                if (plannedWaterHoles.contains(pos)) {
+                if (waterHoleSet.contains(pos)) {
                     boxR = 0.15f; boxG = 0.65f; boxB = 1.0f; // Azure Water Blue
                     currentAlpha = 0.85f;
                 } else {
@@ -503,17 +504,23 @@ public class StandaloneHighlightRenderer {
         // Render faded 3D ghost block preview of Farmland (and planned Water Holes) when holding a hoe
         if (isHoe && FarmingConfig.GHOST_FARMLAND_PREVIEW.get() && !previewBlocks.isEmpty()) {
             VertexConsumer translucentConsumer = bufferSource.getBuffer(RenderType.translucent());
+            FadedVertexConsumer waterFadedConsumer = new FadedVertexConsumer(translucentConsumer, 0.65f);
+            MultiBufferSource waterFadedBuffer = type -> waterFadedConsumer;
+            FadedVertexConsumer wetFadedConsumer = new FadedVertexConsumer(translucentConsumer, 0.70f);
+            MultiBufferSource wetFadedBuffer = type -> wetFadedConsumer;
+            FadedVertexConsumer dryFadedConsumer = new FadedVertexConsumer(translucentConsumer, 0.50f);
+            MultiBufferSource dryFadedBuffer = type -> dryFadedConsumer;
+
             for (BlockPos pos : previewBlocks) {
                 BlockState targetState = level.getBlockState(pos);
                 VoxelShape shape = targetState.getShape(level, pos);
                 double blockTop = shape.isEmpty() ? 1.0 : shape.max(Direction.Axis.Y);
 
-                if (plannedWaterHoles.contains(pos)) {
+                if (waterHoleSet.contains(pos)) {
                     // Render translucent water hole preview (using Light Blue Stained Glass model for fluid rendering compatibility)
                     double yOffset = (blockTop - 1.0) + 0.003;
                     BlockState waterGhost = Blocks.LIGHT_BLUE_STAINED_GLASS.defaultBlockState();
-                    FadedVertexConsumer fadedConsumer = new FadedVertexConsumer(translucentConsumer, 0.65f);
-                    MultiBufferSource fadedBuffer = type -> fadedConsumer;
+                    MultiBufferSource fadedBuffer = waterFadedBuffer;
 
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - camPos.x + 0.5, pos.getY() - camPos.y + yOffset, pos.getZ() - camPos.z + 0.5);
@@ -535,9 +542,7 @@ public class StandaloneHighlightRenderer {
                     boolean hasWater = FarmingManager.isNearWater(level, pos) || FarmingManager.isHydratedByHoles(pos, plannedWaterHoles);
                     BlockState farmlandState = Blocks.FARMLAND.defaultBlockState()
                             .setValue(FarmBlock.MOISTURE, hasWater ? 7 : 0);
-                    float alpha = hasWater ? 0.70f : 0.50f;
-                    FadedVertexConsumer fadedConsumer = new FadedVertexConsumer(translucentConsumer, alpha);
-                    MultiBufferSource fadedBuffer = type -> fadedConsumer;
+                    MultiBufferSource fadedBuffer = hasWater ? wetFadedBuffer : dryFadedBuffer;
 
                     poseStack.pushPose();
                     poseStack.translate(pos.getX() - camPos.x + 0.5, pos.getY() - camPos.y + yOffset, pos.getZ() - camPos.z + 0.5);

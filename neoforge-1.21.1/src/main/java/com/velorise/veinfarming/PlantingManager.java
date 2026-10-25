@@ -154,6 +154,16 @@ public class PlantingManager {
             }
 
             BlockPos above = soilPos.above();
+            if (PlantClassifier.isSugarCane(currentSeedStack)) {
+                int stackSafety = 0;
+                while (stackSafety < 16 && PlantClassifier.isSugarCane(level.getBlockState(above))) {
+                    above = above.above();
+                    stackSafety++;
+                }
+            }
+            if (!level.mayInteract(player, above)) {
+                continue;
+            }
             BlockState aboveState = level.getBlockState(above);
 
             if (aboveState.isAir() || aboveState.canBeReplaced()) {
@@ -267,6 +277,7 @@ public class PlantingManager {
 
         for (BlockPos podPos : targetPodPositions) {
             if (plantedCount >= maxLimit) break;
+            if (!level.mayInteract(player, podPos)) continue;
 
             BlockState currentAtPod = level.getBlockState(podPos);
             if (!currentAtPod.isAir() && !currentAtPod.canBeReplaced()) {
@@ -353,12 +364,12 @@ public class PlantingManager {
 
         Queue<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> visitedLogs = new HashSet<>();
-        List<BlockPos> validPodSpots = new ArrayList<>();
+        Set<BlockPos> validPodSet = new LinkedHashSet<>();
 
         queue.add(startLog);
         visitedLogs.add(startLog);
 
-        while (!queue.isEmpty() && validPodSpots.size() < maxLimit) {
+        while (!queue.isEmpty() && validPodSet.size() < maxLimit) {
             BlockPos logPos = queue.poll();
 
             for (Direction dir : Direction.Plane.HORIZONTAL) {
@@ -367,9 +378,8 @@ public class PlantingManager {
                 if (podState.isAir() || podState.canBeReplaced()) {
                     Direction facingToLog = dir.getOpposite();
                     BlockState placeState = Blocks.COCOA.defaultBlockState().setValue(CocoaBlock.FACING, facingToLog);
-                    if (placeState.canSurvive(level, podPos) && !validPodSpots.contains(podPos)) {
-                        validPodSpots.add(podPos);
-                        if (validPodSpots.size() >= maxLimit) {
+                    if (placeState.canSurvive(level, podPos) && validPodSet.add(podPos)) {
+                        if (validPodSet.size() >= maxLimit) {
                             break;
                         }
                     }
@@ -397,6 +407,7 @@ public class PlantingManager {
         }
 
         final BlockPos origin = startPos;
+        List<BlockPos> validPodSpots = new ArrayList<>(validPodSet);
         validPodSpots.sort(Comparator.comparingInt(p -> p.distManhattan(origin)));
         return validPodSpots;
     }
@@ -608,4 +619,3 @@ public class PlantingManager {
         return targetPodPositions;
     }
 }
-

@@ -74,6 +74,9 @@ public class TillingAndFertilizingManager {
             List<BlockPos> waterHoles = PlantingAlgorithms.calculateOptimalWaterHoles(level, sorted, clickedPos, availableWater);
             if (!waterHoles.isEmpty()) {
                 for (BlockPos holePos : waterHoles) {
+                    if (!level.mayInteract(player, holePos)) {
+                        continue;
+                    }
                     if (consumeOneWaterSource(player)) {
                         // Clear foliage above if any
                         BlockPos aboveHole = holePos.above();
@@ -110,6 +113,9 @@ public class TillingAndFertilizingManager {
         for (BlockPos pos : sorted) {
             if (tilledCount >= maxLimit) {
                 break;
+            }
+            if (!level.mayInteract(player, pos)) {
+                continue;
             }
 
             // Safety check: tool broken or almost broken
@@ -258,6 +264,9 @@ public class TillingAndFertilizingManager {
                 if (!player.isCreative() && player.getItemInHand(hand).isEmpty()) {
                     break;
                 }
+                if (!level.mayInteract(player, pos)) {
+                    continue;
+                }
 
                 BlockPos cropPos = pos;
                 BlockState state = level.getBlockState(cropPos);
@@ -401,7 +410,7 @@ public class TillingAndFertilizingManager {
         int radius = FarmingConfig.FARMING_RADIUS.get();
         Queue<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
-        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> result = new LinkedHashSet<>();
 
         if (!isTillable(level, player, hand, clickedPos)) {
             return Collections.emptyList();
@@ -507,14 +516,10 @@ public class TillingAndFertilizingManager {
             boolean isSameCropType = targetCropBlock == null || candidateState.is(targetCropBlock);
             if (isSameCropType && PlantClassifier.isBonemealCrop(candidateState)) {
                 if (PlantClassifier.isSmallFlower(candidateState)) {
-                    if (!result.contains(candidateCrop)) {
-                        result.add(candidateCrop);
-                    }
+                    result.add(candidateCrop);
                 } else if (candidateState.getBlock() instanceof BonemealableBlock bonemealable) {
                     if (bonemealable.isValidBonemealTarget(level, candidateCrop, candidateState)) {
-                        if (!result.contains(candidateCrop)) {
-                            result.add(candidateCrop);
-                        }
+                        result.add(candidateCrop);
                     }
                 }
             }
@@ -723,6 +728,7 @@ public class TillingAndFertilizingManager {
             if (fluidHandler != null && !off.is(Items.WATER_BUCKET) && !off.is(PlantClassifier.C_WATER_BUCKETS)) {
                 var drained = fluidHandler.drain(1000, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
                 if (!drained.isEmpty() && drained.getAmount() >= 1000) {
+                    player.setItemInHand(InteractionHand.OFF_HAND, fluidHandler.getContainer());
                     return true;
                 }
             }
@@ -745,6 +751,7 @@ public class TillingAndFertilizingManager {
                 if (fluidHandler != null && !stack.is(Items.WATER_BUCKET) && !stack.is(PlantClassifier.C_WATER_BUCKETS)) {
                     var drained = fluidHandler.drain(1000, net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE);
                     if (!drained.isEmpty() && drained.getAmount() >= 1000) {
+                        player.getInventory().setItem(i, fluidHandler.getContainer());
                         return true;
                     }
                 }
@@ -764,4 +771,3 @@ public class TillingAndFertilizingManager {
         }
     }
 }
-

@@ -354,21 +354,24 @@ public class PlantClassifier {
                 if (grower instanceof TreeGrower tg) {
                     boolean hasMega = false;
                     boolean hasRegular = false;
+                    int optionalIndex = 0;
 
                     for (Field gf : TreeGrower.class.getDeclaredFields()) {
                         gf.setAccessible(true);
                         Object val = gf.get(tg);
                         if (val instanceof Optional<?> opt) {
                             String fname = gf.getName().toLowerCase(Locale.ROOT);
-                            if (fname.contains("mega")) {
-                                if (opt.isPresent()) {
-                                    hasMega = true;
-                                }
-                            } else if (fname.contains("tree") && !fname.contains("grower")) {
-                                if (opt.isPresent()) {
-                                    hasRegular = true;
-                                }
+                            // Support both named (Mojmap) and obfuscated (Intermediary) field order in TreeGrower:
+                            // Index 0: megaTree, Index 1: secondaryMegaTree, Index 2: tree, Index 3: secondaryTree
+                            boolean isMegaField = fname.contains("mega") || (!fname.contains("tree") && !fname.contains("flower") && (optionalIndex == 0 || optionalIndex == 1));
+                            boolean isRegularField = (fname.contains("tree") && !fname.contains("grower") && !fname.contains("mega"))
+                                    || (!fname.contains("tree") && !fname.contains("flower") && (optionalIndex == 2 || optionalIndex == 3));
+                            if (isMegaField && opt.isPresent()) {
+                                hasMega = true;
+                            } else if (isRegularField && opt.isPresent()) {
+                                hasRegular = true;
                             }
+                            optionalIndex++;
                         }
                     }
 

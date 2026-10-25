@@ -93,14 +93,21 @@ public class HarvestManager {
 
         List<ItemStack> allDrops = new ArrayList<>();
         Set<BlockPos> processedColumnRoots = new HashSet<>();
+        boolean startedWithTool = !heldItem.isEmpty() && heldItem.isDamageableItem();
 
         for (BlockPos pos : sorted) {
             if (harvestedCount >= maxLimit) {
                 break;
             }
+            if (!serverLevel.mayInteract(player, pos)) {
+                continue;
+            }
 
             // Check tool breaking safety if using a damageable tool/hoe
-            if (!player.isCreative() && !heldItem.isEmpty() && heldItem.isDamageableItem()) {
+            if (!player.isCreative() && startedWithTool) {
+                if (heldItem.isEmpty()) {
+                    break;
+                }
                 if (preventBreaking && heldItem.getDamageValue() >= heldItem.getMaxDamage() - 1) {
                     break;
                 }
@@ -127,7 +134,10 @@ public class HarvestManager {
                             if (harvestedCount >= maxLimit) {
                                 break;
                             }
-                            if (!player.isCreative() && !heldItem.isEmpty() && heldItem.isDamageableItem()) {
+                            if (!player.isCreative() && startedWithTool) {
+                                if (heldItem.isEmpty()) {
+                                    break;
+                                }
                                 if (preventBreaking && heldItem.getDamageValue() >= heldItem.getMaxDamage() - 1) {
                                     break;
                                 }
@@ -530,13 +540,20 @@ public class HarvestManager {
         int destroyedCount = 0;
         List<ItemStack> allDrops = new ArrayList<>();
         SoundType lastSoundType = null;
+        boolean startedWithTool = !heldItem.isEmpty() && heldItem.isDamageableItem();
 
         for (BlockPos pos : sorted) {
             if (destroyedCount >= maxLimit) {
                 break;
             }
+            if (!serverLevel.mayInteract(player, pos)) {
+                continue;
+            }
 
-            if (!player.isCreative() && !heldItem.isEmpty() && heldItem.isDamageableItem()) {
+            if (!player.isCreative() && startedWithTool) {
+                if (heldItem.isEmpty()) {
+                    break;
+                }
                 if (preventBreaking && heldItem.getDamageValue() >= heldItem.getMaxDamage() - 1) {
                     break;
                 }
@@ -625,7 +642,7 @@ public class HarvestManager {
         int maxLimit = FarmingConfig.MAX_BLOCKS.get();
         int radius = FarmingConfig.FARMING_RADIUS.get();
         Set<BlockPos> visited = new HashSet<>();
-        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> result = new LinkedHashSet<>();
         Queue<BlockPos> queue = new ArrayDeque<>();
 
         // Rice (Farmer's Delight): wipe both submerged crops and upper panicles
@@ -1007,7 +1024,7 @@ public class HarvestManager {
         int radius = FarmingConfig.FARMING_RADIUS.get();
         Queue<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> visited = new HashSet<>();
-        List<BlockPos> result = new ArrayList<>();
+        Set<BlockPos> result = new LinkedHashSet<>();
 
         BlockState startState = level.getBlockState(startPos);
         BlockPos actualCropPos = startPos;
@@ -1229,4 +1246,3 @@ public class HarvestManager {
         return result;
     }
 }
-

@@ -16,23 +16,102 @@ import java.util.List;
 public class LiteMinerCompat {
     public static final String LITEMINER_MODID = "liteminer";
 
+    private static Boolean modLoaded = null;
+    private static boolean serverReflInit = false;
+    private static Field instanceField;
+    private static Method getPlayerStateMethod;
+    private static Method getKeymappingStateMethod;
+    private static Method getShapeMethod;
+    private static Field walkersField;
+    private static Field configField;
+    private static Field blockBreakLimitField;
+    private static Method blockBreakLimitGetMethod;
+    private static Field preventToolBreakingField;
+    private static Method preventToolBreakingGetMethod;
+    private static Field foodExhaustionEnabledField;
+    private static Method foodExhaustionEnabledGetMethod;
+    private static Field foodExhaustionField;
+    private static Method foodExhaustionGetMethod;
+
+    private static boolean clientReflInit = false;
+    private static Method isVeinMiningMethod;
+    private static Field clientKeyField;
+    private static Field selectedBlocksField;
+
     public static boolean isLiteMinerLoaded() {
-        return FabricLoader.getInstance().isModLoaded(LITEMINER_MODID);
+        if (modLoaded == null) {
+            modLoaded = FabricLoader.getInstance().isModLoaded(LITEMINER_MODID);
+        }
+        return modLoaded;
+    }
+
+    private static synchronized void initServerReflection() {
+        if (serverReflInit) return;
+        serverReflInit = true;
+        try {
+            Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
+            instanceField = liteminerClass.getField("instance");
+            walkersField = liteminerClass.getField("WALKERS");
+            configField = liteminerClass.getField("CONFIG");
+
+            Object instance = instanceField.get(null);
+            if (instance != null) {
+                getPlayerStateMethod = instance.getClass().getMethod("getPlayerState", ServerPlayer.class);
+            }
+
+            Object config = configField.get(null);
+            if (config != null) {
+                blockBreakLimitField = config.getClass().getField("blockBreakLimit");
+                Object limitObj = blockBreakLimitField.get(config);
+                if (limitObj != null) blockBreakLimitGetMethod = limitObj.getClass().getMethod("get");
+
+                preventToolBreakingField = config.getClass().getField("preventToolBreaking");
+                Object ptbObj = preventToolBreakingField.get(config);
+                if (ptbObj != null) preventToolBreakingGetMethod = ptbObj.getClass().getMethod("get");
+
+                foodExhaustionEnabledField = config.getClass().getField("foodExhaustionEnabled");
+                Object feeObj = foodExhaustionEnabledField.get(config);
+                if (feeObj != null) foodExhaustionEnabledGetMethod = feeObj.getClass().getMethod("get");
+
+                foodExhaustionField = config.getClass().getField("foodExhaustion");
+                Object feObj = foodExhaustionField.get(config);
+                if (feObj != null) foodExhaustionGetMethod = feObj.getClass().getMethod("get");
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static synchronized void initClientReflection() {
+        if (clientReflInit) return;
+        clientReflInit = true;
+        try {
+            Class<?> clientClass = Class.forName("com.iamkaf.liteminer.LiteminerClient");
+            isVeinMiningMethod = clientClass.getMethod("isVeinMining");
+            clientKeyField = clientClass.getField("KEY_MAPPING");
+            selectedBlocksField = clientClass.getField("selectedBlocks");
+        } catch (Throwable ignored) {
+        }
     }
 
     public static boolean isLiteMinerActive(ServerPlayer player) {
         if (!isLiteMinerLoaded() || player == null) {
             return false;
         }
+        initServerReflection();
         try {
-            Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
-            Object instance = liteminerClass.getField("instance").get(null);
-            if (instance != null) {
-                Method getPlayerStateMethod = instance.getClass().getMethod("getPlayerState", ServerPlayer.class);
-                Object state = getPlayerStateMethod.invoke(instance, player);
-                if (state != null) {
-                    Method getKeymappingState = state.getClass().getMethod("getKeymappingState");
-                    return (boolean) getKeymappingState.invoke(state);
+            if (instanceField != null) {
+                Object instance = instanceField.get(null);
+                if (instance != null) {
+                    if (getPlayerStateMethod == null) {
+                        getPlayerStateMethod = instance.getClass().getMethod("getPlayerState", ServerPlayer.class);
+                    }
+                    Object state = getPlayerStateMethod.invoke(instance, player);
+                    if (state != null) {
+                        if (getKeymappingStateMethod == null) {
+                            getKeymappingStateMethod = state.getClass().getMethod("getKeymappingState");
+                        }
+                        return (boolean) getKeymappingStateMethod.invoke(state);
+                    }
                 }
             }
         } catch (Throwable ignored) {
@@ -44,15 +123,15 @@ public class LiteMinerCompat {
         if (!isLiteMinerLoaded()) {
             return false;
         }
+        initClientReflection();
         try {
-            Class<?> clientClass = Class.forName("com.iamkaf.liteminer.LiteminerClient");
-            Method isVeinMiningMethod = clientClass.getMethod("isVeinMining");
-            if ((boolean) isVeinMiningMethod.invoke(null)) {
+            if (isVeinMiningMethod != null && (boolean) isVeinMiningMethod.invoke(null)) {
                 return true;
             }
-            Field keyField = clientClass.getField("KEY_MAPPING");
-            net.minecraft.client.KeyMapping keyMapping = (net.minecraft.client.KeyMapping) keyField.get(null);
-            return keyMapping != null && keyMapping.isDown();
+            if (clientKeyField != null) {
+                net.minecraft.client.KeyMapping keyMapping = (net.minecraft.client.KeyMapping) clientKeyField.get(null);
+                return keyMapping != null && keyMapping.isDown();
+            }
         } catch (Throwable ignored) {
         }
         return false;
@@ -62,16 +141,17 @@ public class LiteMinerCompat {
         if (!isLiteMinerLoaded()) {
             return Collections.emptyList();
         }
+        initClientReflection();
         try {
-            Class<?> clientClass = Class.forName("com.iamkaf.liteminer.LiteminerClient");
-            Field selectedBlocksField = clientClass.getField("selectedBlocks");
-            Collection<?> set = (Collection<?>) selectedBlocksField.get(null);
-            if (set != null && !set.isEmpty()) {
-                List<BlockPos> list = new ArrayList<>();
-                for (Object o : set) {
-                    if (o instanceof BlockPos bp) list.add(bp);
+            if (selectedBlocksField != null) {
+                Collection<?> set = (Collection<?>) selectedBlocksField.get(null);
+                if (set != null && !set.isEmpty()) {
+                    List<BlockPos> list = new ArrayList<>(set.size());
+                    for (Object o : set) {
+                        if (o instanceof BlockPos bp) list.add(bp);
+                    }
+                    return list;
                 }
-                return list;
             }
         } catch (Throwable ignored) {
         }
@@ -82,27 +162,32 @@ public class LiteMinerCompat {
         if (!isLiteMinerLoaded() || player == null || targetPos == null) {
             return Collections.emptyList();
         }
+        initServerReflection();
         try {
-            Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
-            Object instance = liteminerClass.getField("instance").get(null);
-            if (instance != null) {
-                Method getPlayerStateMethod = instance.getClass().getMethod("getPlayerState", ServerPlayer.class);
-                Object state = getPlayerStateMethod.invoke(instance, player);
-                if (state != null) {
-                    Method getShapeMethod = state.getClass().getMethod("getShape");
-                    int shapeIndex = (int) getShapeMethod.invoke(state);
-                    Field walkersField = liteminerClass.getField("WALKERS");
-                    List<?> walkers = (List<?>) walkersField.get(null);
-                    if (shapeIndex >= 0 && shapeIndex < walkers.size()) {
-                        Object walker = walkers.get(shapeIndex);
-                        Method walkMethod = walker.getClass().getMethod("walk", Level.class, Player.class, BlockPos.class);
-                        Object walked = walkMethod.invoke(walker, player.level(), player, targetPos);
-                        if (walked instanceof Collection<?> col) {
-                            List<BlockPos> list = new ArrayList<>();
-                            for (Object o : col) {
-                                if (o instanceof BlockPos bp) list.add(bp);
+            if (instanceField != null && walkersField != null) {
+                Object instance = instanceField.get(null);
+                if (instance != null) {
+                    if (getPlayerStateMethod == null) {
+                        getPlayerStateMethod = instance.getClass().getMethod("getPlayerState", ServerPlayer.class);
+                    }
+                    Object state = getPlayerStateMethod.invoke(instance, player);
+                    if (state != null) {
+                        if (getShapeMethod == null) {
+                            getShapeMethod = state.getClass().getMethod("getShape");
+                        }
+                        int shapeIndex = (int) getShapeMethod.invoke(state);
+                        List<?> walkers = (List<?>) walkersField.get(null);
+                        if (walkers != null && shapeIndex >= 0 && shapeIndex < walkers.size()) {
+                            Object walker = walkers.get(shapeIndex);
+                            Method walkMethod = walker.getClass().getMethod("walk", Level.class, Player.class, BlockPos.class);
+                            Object walked = walkMethod.invoke(walker, player.level(), player, targetPos);
+                            if (walked instanceof Collection<?> col) {
+                                List<BlockPos> list = new ArrayList<>(col.size());
+                                for (Object o : col) {
+                                    if (o instanceof BlockPos bp) list.add(bp);
+                                }
+                                return list;
                             }
-                            return list;
                         }
                     }
                 }
@@ -114,15 +199,14 @@ public class LiteMinerCompat {
 
     public static int getEffectiveBlockLimit() {
         if (isLiteMinerLoaded()) {
+            initServerReflection();
             try {
-                Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
-                Field configField = liteminerClass.getField("CONFIG");
-                Object config = configField.get(null);
-                if (config != null) {
-                    Field limitField = config.getClass().getField("blockBreakLimit");
-                    Object limitObj = limitField.get(config);
-                    Method getMethod = limitObj.getClass().getMethod("get");
-                    return (int) getMethod.invoke(limitObj);
+                if (configField != null && blockBreakLimitField != null && blockBreakLimitGetMethod != null) {
+                    Object config = configField.get(null);
+                    if (config != null) {
+                        Object limitObj = blockBreakLimitField.get(config);
+                        return (int) blockBreakLimitGetMethod.invoke(limitObj);
+                    }
                 }
             } catch (Throwable ignored) {
             }
@@ -132,15 +216,14 @@ public class LiteMinerCompat {
 
     public static boolean shouldPreventToolBreaking() {
         if (isLiteMinerLoaded()) {
+            initServerReflection();
             try {
-                Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
-                Field configField = liteminerClass.getField("CONFIG");
-                Object config = configField.get(null);
-                if (config != null) {
-                    Field field = config.getClass().getField("preventToolBreaking");
-                    Object obj = field.get(config);
-                    Method getMethod = obj.getClass().getMethod("get");
-                    return (boolean) getMethod.invoke(obj);
+                if (configField != null && preventToolBreakingField != null && preventToolBreakingGetMethod != null) {
+                    Object config = configField.get(null);
+                    if (config != null) {
+                        Object obj = preventToolBreakingField.get(config);
+                        return (boolean) preventToolBreakingGetMethod.invoke(obj);
+                    }
                 }
             } catch (Throwable ignored) {
             }
@@ -150,19 +233,17 @@ public class LiteMinerCompat {
 
     public static float getFoodExhaustion() {
         if (isLiteMinerLoaded()) {
+            initServerReflection();
             try {
-                Class<?> liteminerClass = Class.forName("com.iamkaf.liteminer.Liteminer");
-                Field configField = liteminerClass.getField("CONFIG");
-                Object config = configField.get(null);
-                if (config != null) {
-                    Field enabledField = config.getClass().getField("foodExhaustionEnabled");
-                    Object enabledObj = enabledField.get(config);
-                    Method getEnabledMethod = enabledObj.getClass().getMethod("get");
-                    if ((boolean) getEnabledMethod.invoke(enabledObj)) {
-                        Field exhaustField = config.getClass().getField("foodExhaustion");
-                        Object exhaustObj = exhaustField.get(config);
-                        Method getExhaustMethod = exhaustObj.getClass().getMethod("get");
-                        return ((Number) getExhaustMethod.invoke(exhaustObj)).floatValue();
+                if (configField != null && foodExhaustionEnabledField != null && foodExhaustionEnabledGetMethod != null
+                        && foodExhaustionField != null && foodExhaustionGetMethod != null) {
+                    Object config = configField.get(null);
+                    if (config != null) {
+                        Object enabledObj = foodExhaustionEnabledField.get(config);
+                        if ((boolean) foodExhaustionEnabledGetMethod.invoke(enabledObj)) {
+                            Object exhaustObj = foodExhaustionField.get(config);
+                            return ((Number) foodExhaustionGetMethod.invoke(exhaustObj)).floatValue();
+                        }
                     }
                 }
             } catch (Throwable ignored) {
