@@ -232,6 +232,7 @@ public class FarmingManager {
     public static boolean isFarmlandCrop(BlockState state) { return PlantClassifier.isFarmlandCrop(state); }
     public static boolean isFarmlandCrop(ItemStack stack) { return PlantClassifier.isFarmlandCrop(stack); }
     public static boolean isHarvestablePlant(BlockState state) { return PlantClassifier.isHarvestablePlant(state); }
+    public static boolean isFoliageOrPlant(BlockState state) { return PlantClassifier.isFoliageOrPlant(state); }
     public static boolean isColumnCrop(BlockState state) { return PlantClassifier.isColumnCrop(state); }
     public static boolean isSugarCane(BlockState state) { return PlantClassifier.isSugarCane(state); }
     public static boolean isSugarCane(ItemStack stack) { return PlantClassifier.isSugarCane(stack); }

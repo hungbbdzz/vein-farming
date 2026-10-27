@@ -824,9 +824,21 @@ public class PlantClassifier {
     }
 
     /**
-     * Checks if a block is an agricultural crop or harvestable plant.
-     * Strictly excludes regular environmental blocks (Stone, Dirt, Wood, Ores, etc.).
+     * Checks if a block is wild foliage, grass plant, flower, or replaceable plant.
+     * Strictly does not include soil blocks like Dirt, Grass Block, Farmland, etc.
      */
+    public static boolean isFoliageOrPlant(BlockState state) {
+        if (state == null || state.isAir()) {
+            return false;
+        }
+        if (state.getBlock() instanceof BushBlock || state.canBeReplaced()
+                || state.is(BlockTags.REPLACEABLE_BY_TREES) || state.is(BlockTags.FLOWERS)) {
+            return true;
+        }
+        String id = state.getBlock().getDescriptionId().toLowerCase(Locale.ROOT);
+        return id.contains("short_grass") || id.contains("tall_grass") || id.contains("fern") || id.contains("flower");
+    }
+
     public static boolean isHarvestablePlant(BlockState state) {
         if (state == null || state.isAir()) {
             return false;

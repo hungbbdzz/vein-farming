@@ -1023,6 +1023,10 @@ public class PlantingAlgorithms {
             double bestDistSq = Double.MAX_VALUE;
 
             for (BlockPos pos : tilledPositions) {
+                BlockState posState = level.getBlockState(pos);
+                if (posState.isAir() || PlantClassifier.isFoliageOrPlant(posState)) {
+                    continue;
+                }
                 if (!level.getBlockState(pos.below()).isSolid()) {
                     continue;
                 }
@@ -1049,6 +1053,10 @@ public class PlantingAlgorithms {
         // Fallback candidates for irregular shapes
         List<BlockPos> fallbackCandidates = new ArrayList<>();
         for (BlockPos pos : tilledPositions) {
+            BlockState posState = level.getBlockState(pos);
+            if (posState.isAir() || PlantClassifier.isFoliageOrPlant(posState)) {
+                continue;
+            }
             if (!candidateSet.contains(pos) && level.getBlockState(pos.below()).isSolid()) {
                 if (!isTooCloseToWater(pos, existingWorldWaters, minSpacing)) {
                     fallbackCandidates.add(pos);

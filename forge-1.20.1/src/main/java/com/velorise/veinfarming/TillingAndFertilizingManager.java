@@ -47,9 +47,16 @@ public class TillingAndFertilizingManager {
     public static boolean handleMassHoe(ServerPlayer player, InteractionHand hand, ItemStack hoeStack, BlockPos clickedPos) {
         Level level = player.level();
 
-        Collection<BlockPos> selected = FarmingManager.getSelectedPositions(player, clickedPos);
+        BlockPos initialSoilPos = clickedPos;
+        BlockState clickedState = level.getBlockState(initialSoilPos);
+        if (PlantClassifier.isFoliageOrPlant(clickedState) && isTillable(level, player, hand, initialSoilPos.below())) {
+            initialSoilPos = initialSoilPos.below();
+        }
+        final BlockPos targetSoilPos = initialSoilPos;
+
+        Collection<BlockPos> selected = FarmingManager.getSelectedPositions(player, targetSoilPos);
         if (selected == null || selected.isEmpty()) {
-            selected = fallbackHoeSearch(player, hand, clickedPos);
+            selected = fallbackHoeSearch(player, hand, targetSoilPos);
         }
 
         if (selected == null || selected.isEmpty()) {
@@ -57,8 +64,13 @@ public class TillingAndFertilizingManager {
         }
 
         List<BlockPos> sorted = selected.stream()
-                .sorted(Comparator.comparingInt(p -> p.distManhattan(clickedPos)))
+                .filter(p -> isTillable(level, player, hand, p))
+                .sorted(Comparator.comparingInt(p -> p.distManhattan(targetSoilPos)))
                 .toList();
+
+        if (sorted.isEmpty()) {
+            return false;
+        }
 
         // Smart Water Bucket Irrigation:
         // When holding a Hoe in main hand and a Water Bucket (or fluid container with water) in off hand,
@@ -73,7 +85,7 @@ public class TillingAndFertilizingManager {
         int waterHolesPlaced = 0;
         if (canIrrigate) {
             int availableWater = getAvailableWaterCount(player);
-            List<BlockPos> waterHoles = PlantingAlgorithms.calculateOptimalWaterHoles(level, sorted, clickedPos, availableWater);
+            List<BlockPos> waterHoles = PlantingAlgorithms.calculateOptimalWaterHoles(level, sorted, targetSoilPos, availableWater);
             if (!waterHoles.isEmpty()) {
                 for (BlockPos holePos : waterHoles) {
                     if (!level.mayInteract(player, holePos)) {
@@ -83,7 +95,7 @@ public class TillingAndFertilizingManager {
                         // Clear foliage above if any
                         BlockPos aboveHole = holePos.above();
                         BlockState aboveHoleState = level.getBlockState(aboveHole);
-                        if (!aboveHoleState.isAir() && (aboveHoleState.canBeReplaced() || aboveHoleState.is(BlockTags.REPLACEABLE_BY_TREES) || aboveHoleState.is(BlockTags.FLOWERS) || (aboveHoleState.getBlock() instanceof BushBlock))) {
+                        if (!aboveHoleState.isAir() && PlantClassifier.isFoliageOrPlant(aboveHoleState)) {
                             level.destroyBlock(aboveHole, true, player);
                         }
 
@@ -137,7 +149,7 @@ public class TillingAndFertilizingManager {
             // Safe foliage clearing: never break existing valuable crops (CropBlock or StemBlock)!
             boolean isValuableCrop = aboveState.getBlock() instanceof CropBlock || aboveState.getBlock() instanceof StemBlock;
 
-            if (clearFoliage && !aboveState.isAir() && !isValuableCrop && (aboveState.canBeReplaced() || aboveState.is(BlockTags.REPLACEABLE_BY_TREES) || aboveState.is(BlockTags.FLOWERS) || (aboveState.getBlock() instanceof BushBlock && !isValuableCrop))) {
+            if (clearFoliage && !aboveState.isAir() && !isValuableCrop && PlantClassifier.isFoliageOrPlant(aboveState)) {
                 level.destroyBlock(above, true, player);
                 aboveState = level.getBlockState(above);
             }
@@ -196,7 +208,7 @@ public class TillingAndFertilizingManager {
         }
 
         if (tilledCount > 0 || waterHolesPlaced > 0) {
-            level.playSound(null, clickedPos, SoundEvents.HOE_TILL, SoundSource.BLOCKS, 1.0F, 1.0F);
+            level.playSound(null, targetSoilPos, SoundEvents.HOE_TILL, SoundSource.BLOCKS, 1.0F, 1.0F);
             player.swing(hand, true);
             if (FTBUltimineCompat.isFTBUltimineLoaded() && FTBUltimineCompat.isUltimineActive(player)) {
                 FTBUltimineCompat.applyPostUltimineCosts(player, tilledCount + waterHolesPlaced);
@@ -414,12 +426,19 @@ public class TillingAndFertilizingManager {
         Set<BlockPos> visited = new HashSet<>();
         Set<BlockPos> result = new LinkedHashSet<>();
 
-        if (!isTillable(level, player, hand, clickedPos)) {
+        BlockPos initialSoilPos = clickedPos;
+        BlockState clickedState = level.getBlockState(initialSoilPos);
+        if (PlantClassifier.isFoliageOrPlant(clickedState) && isTillable(level, player, hand, initialSoilPos.below())) {
+            initialSoilPos = initialSoilPos.below();
+        }
+        final BlockPos targetSoilPos = initialSoilPos;
+
+        if (!isTillable(level, player, hand, targetSoilPos)) {
             return Collections.emptyList();
         }
 
-        queue.add(clickedPos);
-        visited.add(clickedPos);
+        queue.add(targetSoilPos);
+        visited.add(targetSoilPos);
 
         while (!queue.isEmpty() && result.size() < maxLimit) {
             BlockPos current = queue.poll();
@@ -431,9 +450,9 @@ public class TillingAndFertilizingManager {
                     for (int dy = -1; dy <= 1; dy++) {
                         BlockPos next = current.offset(dx, dy, dz);
                         if (visited.contains(next)) continue;
-                        if (Math.abs(next.getX() - clickedPos.getX()) > radius
-                                || Math.abs(next.getZ() - clickedPos.getZ()) > radius
-                                || Math.abs(next.getY() - clickedPos.getY()) > 2) {
+                        if (Math.abs(next.getX() - targetSoilPos.getX()) > radius
+                                || Math.abs(next.getZ() - targetSoilPos.getZ()) > radius
+                                || Math.abs(next.getY() - targetSoilPos.getY()) > 2) {
                             continue;
                         }
 
@@ -451,6 +470,9 @@ public class TillingAndFertilizingManager {
 
     public static boolean isTillable(Level level, Player player, InteractionHand hand, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
+        if (state.isAir() || PlantClassifier.isFoliageOrPlant(state)) {
+            return false;
+        }
         if (PlantClassifier.isFarmland(state)) {
             return false;
         }
@@ -462,7 +484,7 @@ public class TillingAndFertilizingManager {
             return false;
         }
         boolean clearFoliage = FarmingConfig.CLEAR_FOLIAGE.get();
-        if (!aboveState.isAir() && !(clearFoliage && (aboveState.canBeReplaced() || aboveState.is(BlockTags.REPLACEABLE_BY_TREES) || aboveState.is(BlockTags.FLOWERS) || (aboveState.getBlock() instanceof BushBlock)))) {
+        if (!aboveState.isAir() && !(clearFoliage && PlantClassifier.isFoliageOrPlant(aboveState))) {
             return false;
         }
 
@@ -476,7 +498,7 @@ public class TillingAndFertilizingManager {
             return true;
         }
         String id = state.getBlock().getDescriptionId().toLowerCase(Locale.ROOT);
-        return id.contains("dirt") || id.contains("grass") || id.contains("soil");
+        return id.contains("dirt") || id.contains("grass_block") || id.contains("soil");
     }
 
     public static Collection<BlockPos> fallbackCropSearch(Level level, BlockPos startPos) {

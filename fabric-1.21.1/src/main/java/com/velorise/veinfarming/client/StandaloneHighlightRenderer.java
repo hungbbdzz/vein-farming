@@ -121,20 +121,28 @@ public class StandaloneHighlightRenderer {
             return false;
         }
 
-        // 1. Planting (Seeds, saplings, cocoa, flora, mushrooms, chorus flower)
-        if (PlantClassifier.isPlantableSeed(heldItem) || PlantClassifier.isCocoaBean(heldItem)) {
-            if (PlantClassifier.isCocoaBean(heldItem)) {
+        // 1. Planting (Seeds, saplings, cocoa, flora, mushrooms, chorus flower) - main hand or offhand
+        ItemStack activeSeed = (PlantClassifier.isPlantableSeed(heldItem) || PlantClassifier.isCocoaBean(heldItem))
+                ? heldItem
+                : ((PlantClassifier.isPlantableSeed(offItem) || PlantClassifier.isCocoaBean(offItem)) ? offItem : ItemStack.EMPTY);
+
+        if (!activeSeed.isEmpty()) {
+            if (PlantClassifier.isCocoaBean(activeSeed)) {
                 if (PlantClassifier.isJungleLog(clickedState) || clickedState.getBlock() instanceof CocoaBlock) {
                     return true;
                 }
-            } else if (FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos)
-                    || FarmingManager.isValidSoilForSeed(heldItem, level.getBlockState(clickedPos.below()), level, clickedPos.below())) {
+            } else if (FarmingManager.isValidSoilForSeed(activeSeed, clickedState, level, clickedPos)
+                    || FarmingManager.isValidSoilForSeed(activeSeed, level.getBlockState(clickedPos.below()), level, clickedPos.below())) {
                 return true;
             }
         }
 
         // 2. Hoeing
-        if (FarmingEventHandler.isHoe(heldItem)) {
+        BlockPos targetHoePos = clickedPos;
+        if (PlantClassifier.isFoliageOrPlant(clickedState) && FarmingManager.isTillable(level, player, InteractionHand.MAIN_HAND, targetHoePos.below())) {
+            targetHoePos = targetHoePos.below();
+        }
+        if (FarmingEventHandler.isHoe(heldItem) && FarmingManager.isTillable(level, player, InteractionHand.MAIN_HAND, targetHoePos)) {
             return true;
         }
 
@@ -200,6 +208,14 @@ public class StandaloneHighlightRenderer {
         ItemStack heldItem = player.getMainHandItem();
         ItemStack offItem = player.getOffhandItem();
         InteractionHand hand = InteractionHand.MAIN_HAND;
+        ItemStack activeSeed = (PlantClassifier.isPlantableSeed(heldItem) || PlantClassifier.isCocoaBean(heldItem))
+                ? heldItem
+                : ((PlantClassifier.isPlantableSeed(offItem) || PlantClassifier.isCocoaBean(offItem)) ? offItem : ItemStack.EMPTY);
+        BlockPos initialHoePos = clickedPos;
+        if (PlantClassifier.isFoliageOrPlant(clickedState) && FarmingManager.isTillable(level, player, hand, initialHoePos.below())) {
+            initialHoePos = initialHoePos.below();
+        }
+        final BlockPos targetHoePos = initialHoePos;
 
         boolean isCompanionLoaded = LiteMinerCompat.isLiteMinerLoaded() || FTBUltimineCompat.isFTBUltimineLoaded();
         boolean farmingAction = isFarmingAction(level, player, clickedPos, clickedState, heldItem, offItem);
@@ -319,10 +335,10 @@ public class StandaloneHighlightRenderer {
             } else if (clickedState.is(Blocks.COMPOSTER) && FarmingConfig.BATCH_COMPOSTER.get() && FarmingManager.isCompostable(heldItem)) {
                 previewBlocks = Collections.singletonList(clickedPos);
                 r = 0.45f; g = 0.75f; b = 0.25f; // Compost Green
-            } else if (FarmingEventHandler.isHoe(heldItem) && FarmingManager.isTillable(level, player, hand, clickedPos)) {
+            } else if (FarmingEventHandler.isHoe(heldItem) && FarmingManager.isTillable(level, player, hand, targetHoePos)) {
                 Collection<BlockPos> companionBlocks = Collections.emptyList();
                 if (isCompanionLoaded) {
-                    companionBlocks = FarmingManager.getClientSelectedPositions(level, player, clickedPos);
+                    companionBlocks = FarmingManager.getClientSelectedPositions(level, player, targetHoePos);
                 }
                 if (companionBlocks != null && !companionBlocks.isEmpty()) {
                     List<BlockPos> tillable = new ArrayList<>();
@@ -331,24 +347,24 @@ public class StandaloneHighlightRenderer {
                             tillable.add(p);
                         }
                     }
-                    tillable.sort(Comparator.comparingInt(p -> p.distManhattan(clickedPos)));
+                    tillable.sort(Comparator.comparingInt(p -> p.distManhattan(targetHoePos)));
                     previewBlocks = tillable;
                 } else {
-                    previewBlocks = FarmingManager.fallbackHoeSearch(player, hand, clickedPos);
+                    previewBlocks = FarmingManager.fallbackHoeSearch(player, hand, targetHoePos);
                 }
                 r = 0.65f; g = 0.45f; b = 0.25f; // Earth Farmland Brown
                 isHoe = true;
                 if (PlantClassifier.isWaterContainer(offItem) && FarmingConfig.SMART_WATER_BUCKET_IRRIGATION.get() && previewBlocks.size() >= 2) {
                     int availableWater = FarmingManager.getAvailableWaterCount(player);
-                    plannedWaterHoles = FarmingManager.calculateOptimalWaterHoles(level, previewBlocks, clickedPos, availableWater);
+                    plannedWaterHoles = FarmingManager.calculateOptimalWaterHoles(level, previewBlocks, targetHoePos, availableWater);
                 }
-            } else if (FarmingManager.isPlantableSeed(heldItem) && (
-                    FarmingManager.isCocoaBean(heldItem)
+            } else if (!activeSeed.isEmpty() && (
+                    FarmingManager.isCocoaBean(activeSeed)
                         ? (FarmingManager.isJungleLog(clickedState) || clickedState.getBlock() instanceof CocoaBlock)
-                        : ((FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos) && (level.getBlockState(clickedPos.above()).isAir() || level.getBlockState(clickedPos.above()).canBeReplaced()))
-                           || (FarmingManager.isValidSoilForSeed(heldItem, level.getBlockState(clickedPos.below()), level, clickedPos.below()) && (clickedState.isAir() || clickedState.canBeReplaced())))
+                        : ((FarmingManager.isValidSoilForSeed(activeSeed, clickedState, level, clickedPos) && (level.getBlockState(clickedPos.above()).isAir() || level.getBlockState(clickedPos.above()).canBeReplaced()))
+                           || (FarmingManager.isValidSoilForSeed(activeSeed, level.getBlockState(clickedPos.below()), level, clickedPos.below()) && (clickedState.isAir() || clickedState.canBeReplaced())))
             )) {
-                BlockPos startSoilPos = FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
+                BlockPos startSoilPos = FarmingManager.isValidSoilForSeed(activeSeed, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
                 Collection<BlockPos> companionBlocks = Collections.emptyList();
                 if (isCompanionLoaded) {
                     companionBlocks = FarmingManager.getClientSelectedPositions(level, player, startSoilPos);
@@ -357,15 +373,16 @@ public class StandaloneHighlightRenderer {
                     }
                 }
                 if (companionBlocks != null && !companionBlocks.isEmpty()) {
-                    previewBlocks = PlantingManager.filterSelectedPlantingPositions(level, companionBlocks, startSoilPos, heldItem, ModKeyMappings.isSmartPlantEnabled());
+                    previewBlocks = PlantingManager.filterSelectedPlantingPositions(level, companionBlocks, startSoilPos, activeSeed, ModKeyMappings.isSmartPlantEnabled());
                 } else {
-                    previewBlocks = PlantingManager.fallbackPlantingSearch(level, clickedPos, heldItem, ModKeyMappings.isSmartPlantEnabled());
+                    previewBlocks = PlantingManager.fallbackPlantingSearch(level, clickedPos, activeSeed, ModKeyMappings.isSmartPlantEnabled());
                 }
                 r = 0.4f; g = 0.85f; b = 0.3f; // Sprout Green
                 isPlanting = true;
                 if (FarmingConfig.GHOST_PLANT_PREVIEW.get()) {
-                    ghostPlantState = getPlantedBlockState(heldItem);
-                    if (ModKeyMappings.isSmartPlantEnabled()
+                    ghostPlantState = getPlantedBlockState(activeSeed);
+                    if (activeSeed == heldItem
+                            && ModKeyMappings.isSmartPlantEnabled()
                             && FarmingConfig.SMART_INTERCROPPING.get()
                             && FarmingManager.isIntercroppableCrop(heldItem)
                             && FarmingManager.isIntercroppableCrop(offItem)
@@ -436,8 +453,8 @@ public class StandaloneHighlightRenderer {
 
         Map<BlockPos, Block> plannedIntercrop = null;
         if (isPlanting && ghostOffState != null && ModKeyMappings.isSmartPlantEnabled()) {
-            BlockPos originSoilPos = FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
-            Block mainCropBlock = FarmingManager.getCropBlock(heldItem);
+            BlockPos originSoilPos = FarmingManager.isValidSoilForSeed(activeSeed, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
+            Block mainCropBlock = FarmingManager.getCropBlock(activeSeed);
             Block offCropBlock = FarmingManager.getCropBlock(offItem);
             boolean evenIsMain = FarmingManager.determineIntercropPhase(level, originSoilPos, player.getDirection(), mainCropBlock, offCropBlock);
             boolean alternateOnX = (player.getDirection().getAxis() == Direction.Axis.Z);
@@ -451,7 +468,7 @@ public class StandaloneHighlightRenderer {
         }
 
         float lineAlpha = ((isPlanting && ghostPlantState != null) || (isHoe && FarmingConfig.GHOST_FARMLAND_PREVIEW.get())) ? 0.35f : a;
-        boolean isCocoaPlanting = isPlanting && FarmingManager.isCocoaBean(heldItem);
+        boolean isCocoaPlanting = isPlanting && FarmingManager.isCocoaBean(activeSeed);
         Set<BlockPos> waterHoleSet = plannedWaterHoles.isEmpty() ? Collections.emptySet() : new HashSet<>(plannedWaterHoles);
         for (BlockPos pos : previewBlocks) {
             BlockPos renderPos = (isPlanting && !isCocoaPlanting) ? pos.above() : pos;
@@ -567,8 +584,8 @@ public class StandaloneHighlightRenderer {
             VertexConsumer translucentConsumer = bufferSource.getBuffer(RenderType.translucent());
             FadedVertexConsumer fadedConsumer = new FadedVertexConsumer(translucentConsumer, 0.45f);
             MultiBufferSource fadedBuffer = type -> fadedConsumer;
-            BlockPos originSoilPos = FarmingManager.isValidSoilForSeed(heldItem, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
-            Block mainCropBlock = FarmingManager.getCropBlock(heldItem);
+            BlockPos originSoilPos = FarmingManager.isValidSoilForSeed(activeSeed, clickedState, level, clickedPos) ? clickedPos : clickedPos.below();
+            Block mainCropBlock = FarmingManager.getCropBlock(activeSeed);
             Block offCropBlock = FarmingManager.getCropBlock(offItem);
 
             boolean evenIsMain = true;
@@ -611,8 +628,8 @@ public class StandaloneHighlightRenderer {
         }
 
         // Render translucent 3D ghost fruits (Melon / Pumpkin) on the reserved fruit spots
-        if (isPlanting && FarmingManager.isFruitSeed(heldItem) && !previewBlocks.isEmpty()) {
-            Block fruitBlock = FarmingManager.getFruitForSeed(heldItem);
+        if (isPlanting && FarmingManager.isFruitSeed(activeSeed) && !previewBlocks.isEmpty()) {
+            Block fruitBlock = FarmingManager.getFruitForSeed(activeSeed);
             if (fruitBlock != null) {
                 BlockState fruitState = fruitBlock.defaultBlockState();
                 Set<BlockPos> fruitSpots = new HashSet<>();

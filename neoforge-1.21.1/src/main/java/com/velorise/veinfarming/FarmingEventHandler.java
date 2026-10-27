@@ -315,7 +315,11 @@ public class FarmingEventHandler {
     }
 
     public static boolean isFarmingTarget(Level level, Player player, InteractionHand hand, BlockPos clickedPos, BlockState clickedState, ItemStack heldItem) {
-        if (isHoe(heldItem) && FarmingManager.isTillable(level, player, hand, clickedPos)) {
+        BlockPos targetHoePos = clickedPos;
+        if (PlantClassifier.isFoliageOrPlant(clickedState) && FarmingManager.isTillable(level, player, hand, targetHoePos.below())) {
+            targetHoePos = targetHoePos.below();
+        }
+        if (isHoe(heldItem) && FarmingManager.isTillable(level, player, hand, targetHoePos)) {
             return true;
         }
         if (heldItem.is(Items.BONE_MEAL)) {
