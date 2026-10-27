@@ -1,12 +1,13 @@
 # 🌾 Vein Farming: Universal Farming QoL Toolkit
 
+[![Forge 1.20.1](https://img.shields.io/badge/Forge-1.20.1-darkred.svg)](https://files.minecraftforge.net/)
 [![NeoForge](https://img.shields.io/badge/NeoForge-1.21.1-orange.svg)](https://neoforged.net/)
 [![Fabric 1.21.1](https://img.shields.io/badge/Fabric-1.21.1-blue.svg)](https://fabricmc.net/)
 [![Fabric 1.21.11](https://img.shields.io/badge/Fabric-1.21.11-blue.svg)](https://fabricmc.net/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/badge/GitHub-hungbbdzz%2Fvein--farming-blue.svg)](https://github.com/hungbbdzz/vein-farming)
 
-The ultimate universal AOE farming mod for **NeoForge 1.21.1**, **Fabric 1.21.1**, and **Fabric 1.21.11**.
+The ultimate universal AOE farming mod for **Forge 1.20.1**, **NeoForge 1.21.1**, **Fabric 1.21.1**, and **Fabric 1.21.11**.
 Built as a seamless companion for **[LiteMiner](https://modrinth.com/mod/liteminer)** and **[FTB Ultimine](https://modrinth.com/mod/ftb-ultimine)**, with full **Standalone Mode** support featuring its own client-side in-world highlight outline preview!
 
 Brings **Area Tilling**, **Smart Water Bucket Irrigation (2-Pass Hybrid Grid)**, **Smart Mass Planting with Spatial Geometry**, **AOE Bone Meal**, **Bedrock-Style Flower Propagation**, **Root-Preserving Column Crop Harvesting**, **Stem-Protected Fruit Harvesting**, **Mass Destruction Mode with Drop Aggregation**, **Batch Composting**, **Custom Advancements**, and **Auto-Replanting** to Minecraft!
@@ -294,12 +295,13 @@ The configuration is saved automatically at `.minecraft/config/vein_farming-comm
 ## 🔨 Building from Source
 
 This repository uses a multi-loader workspace structure:
+* `forge-1.20.1/` - Minecraft 1.20.1 Forge target
 * `neoforge-1.21.1/` - Minecraft 1.21.1 NeoForge target
 * `fabric-1.21.1/` - Minecraft 1.21.1 Fabric target
 * `fabric-1.21.11/` - Minecraft 1.21.11 Fabric target
 
 ### Building All Targets:
-Run the root script to automatically build all 3 loaders and copy release JARs to `../mods`:
+Run the root script to automatically build all 4 loaders and copy release JARs to `../mods`:
 
 ```cmd
 build-all.bat
@@ -309,6 +311,9 @@ build-all.bat
 Navigate into the target folder and build with Gradle:
 
 ```bash
+# Forge 1.20.1
+cd forge-1.20.1 && ./gradlew build --no-daemon
+
 # NeoForge 1.21.1
 cd neoforge-1.21.1 && ./gradlew build --no-daemon
 

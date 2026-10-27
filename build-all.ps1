@@ -14,6 +14,14 @@ $OriginalPath = $env:Path
 function Use-JavaHome([string]$VariableName, [string]$Label) {
     $candidate = [Environment]::GetEnvironmentVariable($VariableName)
 
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        if ($VariableName -eq 'JAVA21_HOME' -and (Test-Path 'C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot\bin\java.exe')) {
+            $candidate = 'C:\Program Files\Eclipse Adoptium\jdk-21.0.12.101-hotspot'
+        } elseif ($VariableName -eq 'JAVA17_HOME' -and (Test-Path 'C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot\bin\java.exe')) {
+            $candidate = 'C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot'
+        }
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($candidate)) {
         if (-not (Test-Path (Join-Path $candidate 'bin\java.exe'))) {
             throw "$VariableName points to an invalid JDK directory: $candidate"
@@ -101,9 +109,15 @@ function Copy-ReleaseJar(
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 
 try {
+    Invoke-Build 'Forge 1.20.1'     'forge-1.20.1'     'JAVA17_HOME' 'JDK 17'
     Invoke-Build 'NeoForge 1.21.1'  'neoforge-1.21.1'  'JAVA21_HOME' 'JDK 21'
     Invoke-Build 'Fabric 1.21.1'    'fabric-1.21.1'    'JAVA21_HOME' 'JDK 21'
     Invoke-Build 'Fabric 1.21.11'   'fabric-1.21.11'   'JAVA21_HOME' 'JDK 21'
+
+    $forge1201Jar = Get-LatestReleaseJar `
+        (Join-Path $Root 'forge-1.20.1\build\libs') `
+        'vein_farming-1.20.1-forge-*.jar' `
+        'Forge 1.20.1'
 
     $neoForge121Jar = Get-LatestReleaseJar `
         (Join-Path $Root 'neoforge-1.21.1\build\libs') `
@@ -122,12 +136,13 @@ try {
 
     Write-Host ""
     Write-Host "Copying artifacts to release directory..." -ForegroundColor Cyan
+    Copy-ReleaseJar $forge1201Jar     'Forge 1.20.1'
     Copy-ReleaseJar $neoForge121Jar   'NeoForge 1.21.1'
     Copy-ReleaseJar $fabric121Jar     'Fabric 1.21.1'
     Copy-ReleaseJar $fabric12111Jar   'Fabric 1.21.11'
 
     Write-Host ""
-    Write-Host "All 3 builds completed successfully!" -ForegroundColor Green
+    Write-Host "All 4 builds completed successfully!" -ForegroundColor Green
     Write-Host "Release directory: $OutputDirectory" -ForegroundColor Green
 }
 finally {
